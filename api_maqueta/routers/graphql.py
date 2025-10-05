@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from database import get_db
-from services.product_service import ProductService
-from services.category_service import CategoryService
+from service.product_service import ProductService
+from service.category_service import CategoryService
 import models
 import schemas
 
@@ -21,113 +21,116 @@ async def get_context(db: Session = Depends(get_db)):
 # Tipos GraphQL
 @strawberry.type
 class Categoria:
-    id: int
-    nombre: str
-    descripcion: Optional[str]
-    tipo: str
+    id_categoria: int
+    nombre_categoria: str
 
     @classmethod
-    def from_db(cls, db_categoria: models.Categoria):
+    def from_db(cls, db_categoria: models.Categorias):
         return cls(
-            id=db_categoria.id,
-            nombre=db_categoria.nombre,
-            descripcion=db_categoria.descripcion,
-            tipo=db_categoria.tipo
+            id_categoria=db_categoria.id_categoria,
+            nombre_categoria=db_categoria.nombre_categoria
         )
 
 @strawberry.type
-class Producto:
-    id: int
-    codigo_barras: str
+class Distribuidor:
+    id_distribuidor: int
     nombre: str
-    descripcion: Optional[str]
-    marca: str
-    cantidad: int
-    precio_neto: float
-    porcentaje_ganancia: float
-    iva: float
-    precio_venta: float
-    tipo_vehiculo: Optional[str]
-    tipo_aceite: Optional[str]
-    tipo_combustible: Optional[str]
-    tipo_filtro: Optional[str]
-    categoria: Optional[Categoria]
+    rut: str
+    telefono: Optional[str]
+    email: Optional[str]
+    direccion: Optional[str]
+    ciudad: Optional[str]
 
     @classmethod
-    def from_db(cls, db_producto: models.Producto):
+    def from_db(cls, db_distribuidor: models.Distribuidores):
         return cls(
-            id=db_producto.id,
-            codigo_barras=db_producto.codigo_barras,
-            nombre=db_producto.nombre,
-            descripcion=db_producto.descripcion,
+            id_distribuidor=db_distribuidor.id_distribuidor,
+            nombre=db_distribuidor.nombre,
+            rut=db_distribuidor.rut,
+            telefono=db_distribuidor.telefono,
+            email=db_distribuidor.email,
+            direccion=db_distribuidor.direccion,
+            ciudad=db_distribuidor.ciudad
+        )
+
+@strawberry.type
+class Product:
+    id_producto: int
+    codigo_producto: str
+    nombre_producto: str
+    marca: str
+    descripcion: Optional[str]
+    precio_compra: float
+    margen_ganancia: float
+    precio_neto: float
+    iva: float
+    precio_venta: float
+    stock: int
+    fecha_actualizacion: str
+    categoria: Optional[Categoria]
+    distribuidor: Optional[Distribuidor]
+
+    @classmethod
+    def from_db(cls, db_producto: models.Productos):
+        return cls(
+            id_producto=db_producto.id_producto,
+            codigo_producto=db_producto.codigo_producto,
+            nombre_producto=db_producto.nombre_producto,
             marca=db_producto.marca,
-            cantidad=db_producto.cantidad,
-            precio_neto=db_producto.precio_neto,
-            porcentaje_ganancia=db_producto.porcentaje_ganancia,
-            iva=db_producto.iva,
-            precio_venta=db_producto.precio_venta,
-            tipo_vehiculo=db_producto.tipo_vehiculo,
-            tipo_aceite=db_producto.tipo_aceite,
-            tipo_combustible=db_producto.tipo_combustible,
-            tipo_filtro=db_producto.tipo_filtro,
-            categoria=Categoria.from_db(db_producto.categoria) if db_producto.categoria else None
+            descripcion=db_producto.descripcion,
+            precio_compra=float(db_producto.precio_compra),
+            margen_ganancia=float(db_producto.margen_ganancia),
+            precio_neto=float(db_producto.precio_neto),
+            iva=float(db_producto.iva),
+            precio_venta=float(db_producto.precio_venta),
+            stock=db_producto.stock,
+            fecha_actualizacion=str(db_producto.fecha_actualizacion),
+            categoria=Categoria.from_db(db_producto.categoria) if db_producto.categoria else None,
+            distribuidor=Distribuidor.from_db(db_producto.distribuidor) if db_producto.distribuidor else None
         )
 
 # Inputs GraphQL
 @strawberry.input
-class ProductoInput:
-    codigo_barras: str
-    nombre: str
-    descripcion: Optional[str] = None
+class ProductInput:
+    codigo_producto: str
+    nombre_producto: str
+    id_categoria: int
     marca: str
-    categoria_id: int
-    cantidad: int = 0
-    precio_neto: float
-    porcentaje_ganancia: float = 30.0
-    iva: float = 19.0
-    tipo_vehiculo: Optional[str] = None
-    tipo_aceite: Optional[str] = None
-    tipo_combustible: Optional[str] = None
-    tipo_filtro: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_compra: float
+    margen_ganancia: float = 30.0
+    stock: int = 0
+    id_distribuidor: Optional[int] = None
 
 @strawberry.input
-class FiltroVehiculoInput:
-    tipo_vehiculo: Optional[str] = None
-    tipo_aceite: Optional[str] = None
-    tipo_combustible: Optional[str] = None
-    tipo_filtro: Optional[str] = None
+class CategoriaInput:
+    nombre_categoria: str
+
+@strawberry.input
+class DistribuidorInput:
+    nombre: str
+    rut: str
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
 
 # Queries GraphQL
 @strawberry.type
 class Query:
     @strawberry.field
-    def products(self, info, skip: int = 0, limit: int = 100) -> List[Producto]:
+    def products(self, info, skip: int = 0, limit: int = 100) -> List[Product]:
         """Query products - Obtener lista de productos"""
         service = info.context["product_service"]
         db_productos = service.get_all(skip=skip, limit=limit)
-        return [Producto.from_db(producto) for producto in db_productos]
+        return [Product.from_db(producto) for producto in db_productos]
     
     @strawberry.field
-    def product(self, info, id: int) -> Optional[Producto]:
+    def product(self, info, id: int) -> Optional[Product]:
         """Query product - Obtener un producto por ID"""
         service = info.context["product_service"]
         db_producto = service.get_by_id(id)
-        return Producto.from_db(db_producto) if db_producto else None
-    
-    @strawberry.field
-    def productsByVehicleFilter(self, info, filtros: FiltroVehiculoInput) -> List[Producto]:
-        """Query productsByVehicleFilter - Filtrar productos vehiculares"""
-        service = info.context["product_service"]
-        
-        filtro_schema = schemas.FiltroVehiculo(
-            tipo_vehiculo=filtros.tipo_vehiculo,
-            tipo_aceite=filtros.tipo_aceite,
-            tipo_combustible=filtros.tipo_combustible,
-            tipo_filtro=filtros.tipo_filtro
-        )
-        
-        db_productos = service.filtrar_por_vehiculo(filtro_schema)
-        return [Producto.from_db(producto) for producto in db_productos]
+        return Product.from_db(db_producto) if db_producto else None
     
     @strawberry.field
     def categories(self, info) -> List[Categoria]:
@@ -136,35 +139,77 @@ class Query:
         db_categorias = service.get_all()
         return [Categoria.from_db(categoria) for categoria in db_categorias]
 
+    @strawberry.field
+    def distribuidores(self, info) -> List[Distribuidor]:
+        """Query distribuidores - Obtener todos los distribuidores"""
+        db = info.context["db"]
+        db_distribuidores = db.query(models.Distribuidores).all()
+        return [Distribuidor.from_db(distribuidor) for distribuidor in db_distribuidores]
+
 # Mutations GraphQL
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    def createProduct(self, info, producto: ProductoInput) -> Producto:
+    def createProduct(self, info, product: ProductInput) -> Product:
         """Mutation createProduct - Crear un nuevo producto"""
         service = info.context["product_service"]
         
         producto_data = schemas.ProductoCreate(
-            codigo_barras=producto.codigo_barras,
-            nombre=producto.nombre,
-            descripcion=producto.descripcion,
-            marca=producto.marca,
-            categoria_id=producto.categoria_id,
-            cantidad=producto.cantidad,
-            precio_neto=producto.precio_neto,
-            porcentaje_ganancia=producto.porcentaje_ganancia,
-            iva=producto.iva,
-            tipo_vehiculo=producto.tipo_vehiculo,
-            tipo_aceite=producto.tipo_aceite,
-            tipo_combustible=producto.tipo_combustible,
-            tipo_filtro=producto.tipo_filtro
+            codigo_producto=product.codigo_producto,
+            nombre_producto=product.nombre_producto,
+            id_categoria=product.id_categoria,
+            marca=product.marca,
+            descripcion=product.descripcion,
+            precio_compra=product.precio_compra,
+            margen_ganancia=product.margen_ganancia,
+            stock=product.stock,
+            id_distribuidor=product.id_distribuidor
         )
         
         try:
             db_producto = service.create(producto_data)
-            return Producto.from_db(db_producto)
+            return Product.from_db(db_producto)
         except ValueError as e:
             raise Exception(str(e))
+
+    @strawberry.mutation
+    def createCategoria(self, info, categoria: CategoriaInput) -> Categoria:
+        """Mutation createCategoria - Crear una nueva categoría"""
+        service = info.context["category_service"]
+        
+        categoria_data = schemas.CategoriaCreate(
+            nombre_categoria=categoria.nombre_categoria
+        )
+        
+        try:
+            db_categoria = service.create(categoria_data)
+            return Categoria.from_db(db_categoria)
+        except ValueError as e:
+            raise Exception(str(e))
+
+    @strawberry.mutation
+    def createDistribuidor(self, info, distribuidor: DistribuidorInput) -> Distribuidor:
+        """Mutation createDistribuidor - Crear un nuevo distribuidor"""
+        db = info.context["db"]
+        
+        distribuidor_data = schemas.DistribuidorCreate(
+            nombre=distribuidor.nombre,
+            rut=distribuidor.rut,
+            telefono=distribuidor.telefono,
+            email=distribuidor.email,
+            direccion=distribuidor.direccion,
+            ciudad=distribuidor.ciudad
+        )
+        
+        try:
+            db_distribuidor = models.Distribuidores(**distribuidor_data.dict())
+            db.add(db_distribuidor)
+            db.commit()
+            db.refresh(db_distribuidor)
+            return Distribuidor.from_db(db_distribuidor)
+        except Exception as e:
+            db.rollback()
+            raise Exception(f"Error al crear distribuidor: {str(e)}")
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 graphql_router = GraphQLRouter(schema, context_getter=get_context)

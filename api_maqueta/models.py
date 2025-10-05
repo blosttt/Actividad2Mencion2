@@ -1,68 +1,58 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Date, DECIMAL, Computed
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, date
 from database import Base
 
-# Tabla de categorías
-class Categoria(Base):
-    __tablename__ = "categorias"
+# ==============================
+# TABLA DISTRIBUIDORES
+# ==============================
+class Distribuidores(Base):
+    __tablename__ = "Distribuidores"
     
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(50), unique=True, index=True, nullable=False)
-    descripcion = Column(Text, nullable=True)
-    tipo = Column(String(20), default="general")  # vehiculo, general, etc.
-    created_at = Column(DateTime, default=datetime.utcnow)
-    activo = Column(Integer, default=1)
-
-# Tabla de distribuidores
-class Distribuidor(Base):
-    __tablename__ = "distribuidores"
-    
-    id = Column(Integer, primary_key=True, index=True)
+    id_distribuidor = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
-    contacto = Column(String(100))
+    rut = Column(String(15), unique=True, nullable=False)
     telefono = Column(String(20))
     email = Column(String(100))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    activo = Column(Integer, default=1)
+    direccion = Column(String(150))
+    ciudad = Column(String(50))
+    productos = relationship("Productos", back_populates="distribuidor")
 
-# Tabla principal de productos
-class Producto(Base):
-    __tablename__ = "productos"
+# ==============================
+# TABLA CATEGORIAS
+# ==============================
+class Categorias(Base):
+    __tablename__ = "Categorias"
     
-    id = Column(Integer, primary_key=True, index=True)
-    codigo_barras = Column(String(50), unique=True, index=True, nullable=False)
-    nombre = Column(String(100), index=True, nullable=False)
-    descripcion = Column(Text, nullable=True)
+    id_categoria = Column(Integer, primary_key=True, index=True)
+    nombre_categoria = Column(String(50), unique=True, nullable=False)  # Ej: Aire, Aceite, Combustible
+    
+    productos = relationship("Productos", back_populates="categoria")
+
+# ==============================
+# TABLA PRODUCTOS
+# ==============================
+class Productos(Base):
+    __tablename__ = "Productos"
+    
+    id_producto = Column(Integer, primary_key=True, index=True)
+    codigo_producto = Column(String(50), unique=True, nullable=False)
+    nombre_producto = Column(String(100), nullable=False)
+    id_categoria = Column(Integer, ForeignKey("Categorias.id_categoria"), nullable=False)
     marca = Column(String(50), nullable=False)
+    descripcion = Column(Text)
     
-    # Relaciones
-    categoria_id = Column(Integer, ForeignKey("categorias.id"))
-    distribuidor_id = Column(Integer, ForeignKey("distribuidores.id"))
+    # PRECIOS
+    precio_compra = Column(DECIMAL(10, 2), nullable=False)  # Costo del distribuidor
+    margen_ganancia = Column(DECIMAL(5, 2), default=30)  # % de ganancia
+    precio_neto = Column(DECIMAL(10, 2), Computed("precio_compra * (1 + margen_ganancia/100)"))
+    iva = Column(DECIMAL(10, 2), Computed("precio_neto * 0.19"))
+    precio_venta = Column(DECIMAL(10, 2), Computed("precio_neto + iva"))
     
-    # Campos de cantidad y precios
-    cantidad = Column(Integer, default=0)
-    precio_neto = Column(Float, nullable=False)
-    porcentaje_ganancia = Column(Float, default=30.0)  # 30% por defecto
-    iva = Column(Float, default=19.0)  # 19% IVA por defecto
-    precio_venta = Column(Float, nullable=False)
+    # STOCK Y PROVEEDOR
+    stock = Column(Integer, default=0)
+    id_distribuidor = Column(Integer, ForeignKey("Distribuidores.id_distribuidor"))
+    fecha_actualizacion = Column(Date, default=date.today)
     
-    # Campos específicos para filtros de vehículos
-    tipo_vehiculo = Column(String(20), nullable=True)  # auto, moto, camion
-    tipo_aceite = Column(String(20), nullable=True)    # sintetico, mineral, semi-sintetico
-    tipo_combustible = Column(String(20), nullable=True) # gasolina, diesel, electrico
-    tipo_filtro = Column(String(20), nullable=True)    # aire, aceite, combustible, polen
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    activo = Column(Integer, default=1)
-    
-    # Relationships
-    categoria = relationship("Categoria", backref="productos")
-    distribuidor = relationship("Distribuidor", backref="productos")
-
-    def calcular_precio_venta(self):
-        """Calcula el precio de venta automáticamente"""
-        ganancia = self.precio_neto * (self.porcentaje_ganancia / 100)
-        iva_calculado = (self.precio_neto + ganancia) * (self.iva / 100)
-        return self.precio_neto + ganancia + iva_calculado
+    categoria = relationship("Categorias", back_populates="productos")
+    distribuidor = relationship("Distribuidores", back_populates="productos")

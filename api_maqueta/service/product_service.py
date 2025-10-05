@@ -8,42 +8,33 @@ class ProductService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> List[models.Producto]:
-        return self.db.query(models.Producto).filter(
-            models.Producto.activo == 1
-        ).offset(skip).limit(limit).all()
+    def get_all(self, skip: int = 0, limit: int = 100) -> List[models.Productos]:
+        return self.db.query(models.Productos).offset(skip).limit(limit).all()
 
-    def get_by_id(self, producto_id: int) -> Optional[models.Producto]:
-        return self.db.query(models.Producto).filter(
-            and_(
-                models.Producto.id == producto_id,
-                models.Producto.activo == 1
-            )
+    def get_by_id(self, producto_id: int) -> Optional[models.Productos]:
+        return self.db.query(models.Productos).filter(
+            models.Productos.id_producto == producto_id
         ).first()
 
-    def get_by_codigo_barras(self, codigo_barras: str) -> Optional[models.Producto]:
-        return self.db.query(models.Producto).filter(
-            and_(
-                models.Producto.codigo_barras == codigo_barras,
-                models.Producto.activo == 1
-            )
+    def get_by_codigo_producto(self, codigo_producto: str) -> Optional[models.Productos]:
+        return self.db.query(models.Productos).filter(
+            models.Productos.codigo_producto == codigo_producto
         ).first()
 
-    def create(self, producto: schemas.ProductoCreate) -> models.Producto:
-        # Verificar si el código de barras ya existe
-        if self.get_by_codigo_barras(producto.codigo_barras):
-            raise ValueError(f"El código de barras {producto.codigo_barras} ya existe")
+    def create(self, producto: schemas.ProductoCreate) -> models.Productos:
+        # Verificar si el código de producto ya existe
+        if self.get_by_codigo_producto(producto.codigo_producto):
+            raise ValueError(f"El código de producto {producto.codigo_producto} ya existe")
         
-        # Crear instancia y calcular precio de venta
-        db_producto = models.Producto(**producto.model_dump())
-        db_producto.precio_venta = db_producto.calcular_precio_venta()
+        # Crear instancia
+        db_producto = models.Productos(**producto.model_dump())
         
         self.db.add(db_producto)
         self.db.commit()
         self.db.refresh(db_producto)
         return db_producto
 
-    def update(self, producto_id: int, producto_update: schemas.ProductoUpdate) -> Optional[models.Producto]:
+    def update(self, producto_id: int, producto_update: schemas.ProductoUpdate) -> Optional[models.Productos]:
         db_producto = self.get_by_id(producto_id)
         if not db_producto:
             return None
@@ -52,15 +43,11 @@ class ProductService:
         for field, value in update_data.items():
             setattr(db_producto, field, value)
         
-        # Recalcular precio de venta si cambió precio_neto, porcentaje_ganancia o iva
-        if any(field in update_data for field in ['precio_neto', 'porcentaje_ganancia', 'iva']):
-            db_producto.precio_venta = db_producto.calcular_precio_venta()
-        
         self.db.commit()
         self.db.refresh(db_producto)
         return db_producto
 
-    def partial_update(self, producto_id: int, producto_update: schemas.ProductoUpdate) -> Optional[models.Producto]:
+    def partial_update(self, producto_id: int, producto_update: schemas.ProductoUpdate) -> Optional[models.Productos]:
         return self.update(producto_id, producto_update)
 
     def delete(self, producto_id: int) -> bool:
@@ -68,45 +55,20 @@ class ProductService:
         if not db_producto:
             return False
         
-        db_producto.activo = 0
+        self.db.delete(db_producto)
         self.db.commit()
         return True
 
     def count_all(self) -> int:
-        return self.db.query(models.Producto).filter(
-            models.Producto.activo == 1
-        ).count()
+        return self.db.query(models.Productos).count()
 
-    # Filtros específicos para productos vehiculares
-    def filtrar_por_vehiculo(self, filtros: schemas.FiltroVehiculo, skip: int = 0, limit: int = 100) -> List[models.Producto]:
-        query = self.db.query(models.Producto).filter(
-            models.Producto.activo == 1
-        )
-        
-        # Aplicar filtros si están presentes
-        if filtros.tipo_vehiculo:
-            query = query.filter(models.Producto.tipo_vehiculo == filtros.tipo_vehiculo)
-        if filtros.tipo_aceite:
-            query = query.filter(models.Producto.tipo_aceite == filtros.tipo_aceite)
-        if filtros.tipo_combustible:
-            query = query.filter(models.Producto.tipo_combustible == filtros.tipo_combustible)
-        if filtros.tipo_filtro:
-            query = query.filter(models.Producto.tipo_filtro == filtros.tipo_filtro)
-        
-        return query.offset(skip).limit(limit).all()
 
-    def filtrar_por_categoria(self, categoria_id: int, skip: int = 0, limit: int = 100) -> List[models.Producto]:
-        return self.db.query(models.Producto).filter(
-            and_(
-                models.Producto.categoria_id == categoria_id,
-                models.Producto.activo == 1
-            )
+    def filtrar_por_categoria(self, categoria_id: int, skip: int = 0, limit: int = 100) -> List[models.Productos]:
+        return self.db.query(models.Productos).filter(
+            models.Productos.id_categoria == categoria_id
         ).offset(skip).limit(limit).all()
 
-    def filtrar_por_distribuidor(self, distribuidor_id: int, skip: int = 0, limit: int = 100) -> List[models.Producto]:
-        return self.db.query(models.Producto).filter(
-            and_(
-                models.Producto.distribuidor_id == distribuidor_id,
-                models.Producto.activo == 1
-            )
+    def filtrar_por_distribuidor(self, distribuidor_id: int, skip: int = 0, limit: int = 100) -> List[models.Productos]:
+        return self.db.query(models.Productos).filter(
+            models.Productos.id_distribuidor == distribuidor_id
         ).offset(skip).limit(limit).all()

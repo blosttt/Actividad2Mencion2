@@ -1,108 +1,109 @@
-from pydantic import BaseModel, validator, field_validator
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
 
-# Schema base para categorías
+# ==============================
+# SCHEMAS PARA CATEGORIAS
+# ==============================
 class CategoriaBase(BaseModel):
-    nombre: str
-    descripcion: Optional[str] = None
-    tipo: str = "general"
+    nombre_categoria: str
 
 class CategoriaCreate(CategoriaBase):
     pass
 
+class CategoriaUpdate(BaseModel):
+    nombre_categoria: Optional[str] = None
+
 class CategoriaResponse(CategoriaBase):
-    id: int
-    created_at: datetime
-    activo: int
+    id_categoria: int
 
     class Config:
         from_attributes = True
 
-# Schema base para distribuidores
+# ==============================
+# SCHEMAS PARA DISTRIBUIDORES
+# ==============================
 class DistribuidorBase(BaseModel):
     nombre: str
-    contacto: Optional[str] = None
+    rut: str
     telefono: Optional[str] = None
     email: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
 
 class DistribuidorCreate(DistribuidorBase):
     pass
 
+class DistribuidorUpdate(BaseModel):
+    nombre: Optional[str] = None
+    rut: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    direccion: Optional[str] = None
+    ciudad: Optional[str] = None
+
 class DistribuidorResponse(DistribuidorBase):
-    id: int
-    created_at: datetime
-    activo: int
+    id_distribuidor: int
 
     class Config:
         from_attributes = True
 
-# Schema base para productos
+# ==============================
+# SCHEMAS PARA PRODUCTOS
+# ==============================
 class ProductoBase(BaseModel):
-    codigo_barras: str
-    nombre: str
-    descripcion: Optional[str] = None
+    codigo_producto: str
+    nombre_producto: str
+    id_categoria: int
     marca: str
-    categoria_id: int
-    distribuidor_id: Optional[int] = None
-    cantidad: int = 0
-    precio_neto: float
-    porcentaje_ganancia: float = 30.0
-    iva: float = 19.0
-    
-    # Campos para filtros de vehículos
-    tipo_vehiculo: Optional[str] = None
-    tipo_aceite: Optional[str] = None
-    tipo_combustible: Optional[str] = None
-    tipo_filtro: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_compra: Decimal
+    margen_ganancia: Decimal = 30.0
+    stock: int = 0
+    id_distribuidor: Optional[int] = None
 
-    @field_validator('precio_neto')
+    @field_validator('precio_compra')
     @classmethod
     def precio_must_be_positive(cls, v):
         if v <= 0:
-            raise ValueError('El precio neto debe ser mayor a 0')
+            raise ValueError('El precio de compra debe ser mayor a 0')
         return v
 
-    @field_validator('porcentaje_ganancia')
+    @field_validator('margen_ganancia')
     @classmethod
     def ganancia_must_be_reasonable(cls, v):
         if v < 0 or v > 1000:
-            raise ValueError('El porcentaje de ganancia debe ser entre 0 y 1000')
+            raise ValueError('El margen de ganancia debe ser entre 0 y 1000')
         return v
 
-    @field_validator('cantidad')
+    @field_validator('stock')
     @classmethod
-    def cantidad_must_be_non_negative(cls, v):
+    def stock_must_be_non_negative(cls, v):
         if v < 0:
-            raise ValueError('La cantidad no puede ser negativa')
+            raise ValueError('El stock no puede ser negativo')
         return v
 
 class ProductoCreate(ProductoBase):
     pass
 
 class ProductoUpdate(BaseModel):
-    codigo_barras: Optional[str] = None
-    nombre: Optional[str] = None
-    descripcion: Optional[str] = None
+    codigo_producto: Optional[str] = None
+    nombre_producto: Optional[str] = None
+    id_categoria: Optional[int] = None
     marca: Optional[str] = None
-    categoria_id: Optional[int] = None
-    distribuidor_id: Optional[int] = None
-    cantidad: Optional[int] = None
-    precio_neto: Optional[float] = None
-    porcentaje_ganancia: Optional[float] = None
-    iva: Optional[float] = None
-    tipo_vehiculo: Optional[str] = None
-    tipo_aceite: Optional[str] = None
-    tipo_combustible: Optional[str] = None
-    tipo_filtro: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio_compra: Optional[Decimal] = None
+    margen_ganancia: Optional[Decimal] = None
+    stock: Optional[int] = None
+    id_distribuidor: Optional[int] = None
 
 class ProductoResponse(ProductoBase):
-    id: int
-    precio_venta: float
-    created_at: datetime
-    updated_at: datetime
-    activo: int
+    id_producto: int
+    precio_neto: Decimal
+    iva: Decimal
+    precio_venta: Decimal
+    fecha_actualizacion: date
     categoria: Optional[CategoriaResponse] = None
     distribuidor: Optional[DistribuidorResponse] = None
 
@@ -114,10 +115,3 @@ class ProductoListResponse(BaseModel):
     total: int
     pagina: int
     tamaño: int
-
-# Schemas para filtros
-class FiltroVehiculo(BaseModel):
-    tipo_vehiculo: Optional[str] = None
-    tipo_aceite: Optional[str] = None
-    tipo_combustible: Optional[str] = None
-    tipo_filtro: Optional[str] = None
