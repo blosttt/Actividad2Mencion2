@@ -101,7 +101,7 @@ class ProductoUpdate(BaseModel):
 class ProductoResponse(ProductoBase):
     id_producto: int
     precio_neto: Decimal
-    iva: Decimal
+    precio_iva: Decimal
     precio_venta: Decimal
     fecha_actualizacion: date
     categoria: Optional[CategoriaResponse] = None

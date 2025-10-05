@@ -63,7 +63,7 @@ class Product:
     precio_compra: float
     margen_ganancia: float
     precio_neto: float
-    iva: float
+    precio_iva: float
     precio_venta: float
     stock: int
     fecha_actualizacion: str
@@ -81,7 +81,7 @@ class Product:
             precio_compra=float(db_producto.precio_compra),
             margen_ganancia=float(db_producto.margen_ganancia),
             precio_neto=float(db_producto.precio_neto),
-            iva=float(db_producto.iva),
+            precio_iva=float(db_producto.precio_iva),
             precio_venta=float(db_producto.precio_venta),
             stock=db_producto.stock,
             fecha_actualizacion=str(db_producto.fecha_actualizacion),

@@ -16,6 +16,8 @@ class Distribuidores(Base):
     email = Column(String(100))
     direccion = Column(String(150))
     ciudad = Column(String(50))
+    
+    # Relationships
     productos = relationship("Productos", back_populates="distribuidor")
 
 # ==============================
@@ -25,8 +27,9 @@ class Categorias(Base):
     __tablename__ = "Categorias"
     
     id_categoria = Column(Integer, primary_key=True, index=True)
-    nombre_categoria = Column(String(50), unique=True, nullable=False)  # Ej: Aire, Aceite, Combustible
+    nombre_categoria = Column(String(50), unique=True, nullable=False)  # Ej: Aire, Aceite, Combustible, Habitáculo
     
+    # Relationships
     productos = relationship("Productos", back_populates="categoria")
 
 # ==============================
@@ -45,14 +48,15 @@ class Productos(Base):
     # PRECIOS
     precio_compra = Column(DECIMAL(10, 2), nullable=False)  # Costo del distribuidor
     margen_ganancia = Column(DECIMAL(5, 2), default=30)  # % de ganancia
-    precio_neto = Column(DECIMAL(10, 2), Computed("precio_compra * (1 + margen_ganancia/100)"))
-    iva = Column(DECIMAL(10, 2), Computed("precio_neto * 0.19"))
-    precio_venta = Column(DECIMAL(10, 2), Computed("precio_neto + iva"))
+    precio_neto = Column(DECIMAL(10, 2), Computed("precio_compra + (precio_compra * margen_ganancia / 100)"))
+    precio_iva = Column(DECIMAL(10, 2), Computed("precio_neto + (precio_neto * 0.19)"))
+    precio_venta = Column(DECIMAL(10, 2), Computed("ROUND(precio_iva, 0)"))
     
     # STOCK Y PROVEEDOR
     stock = Column(Integer, default=0)
     id_distribuidor = Column(Integer, ForeignKey("Distribuidores.id_distribuidor"))
     fecha_actualizacion = Column(Date, default=date.today)
     
+    # Relationships
     categoria = relationship("Categorias", back_populates="productos")
     distribuidor = relationship("Distribuidores", back_populates="productos")
